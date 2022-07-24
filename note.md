@@ -1,3 +1,12 @@
+0. Basic structure and workflow definitions for `container` terminology/jargon:
+
+- Definition:
+
+  > - Container is an environment for executing processes with configurable isolation and resource limitations.
+  > - The term "configurable" refers to the meaning that the resource requirements are absolutely controlled by the configure themself.
+
+- `OCI`: stands for "Open Container Initiative" and is an independent organization that delivers a schema of the standard of a qualified container.
+
 1. Simple structure of a `container`:
 
 - `Namespaces`: created with `syscalls`, limited what was the process (container) can see,

@@ -7,6 +7,13 @@
 
 - `OCI`: stands for "Open Container Initiative" and is an independent organization that delivers a schema of the standard of a qualified container.
 
+- `Container`: can infer as a box that contains a bunch of items, all of these items being instances of the processes that are isolated from the host system's procedures.
+
+> - Isolation:
+>   | Namespaces | Filesystem |
+>   |:-|:-|
+>   | uts / mount / pid / ipc / net / user / cgroup | chroot / pivot_root |
+
 1. Simple structure of a `container`:
 
 - `Namespaces`: created with `syscalls`, limited what was the process (container) can see,

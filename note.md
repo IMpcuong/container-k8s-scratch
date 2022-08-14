@@ -39,11 +39,20 @@
   and forced it to follow)
 
   > - Unix Timesharing System
-  > - Process IDs
   > - Mounts
+  > - CGroups
+  > - Process IDs
   > - Network
+  > - UTS
   > - User IDs
-  > - InterProcess Communications
+  > - IPC ~ Inter-Process Communications
+
+  NOTE:
+
+  - It's `a mechanism` to `provide processes` with different boundary/view on different system resources.
+  - Working with namespace:
+    - Create a new namespace: `unshare` ~ also run a process inside the new container/box had just been created.
+    - Enter a namespace: `nsenter` ~ adding new processes to an existing namespace.
 
 - `Chroot`: Changing Root
-- `Cgroups`: Control Groups
+- `CGroups`: Control Groups

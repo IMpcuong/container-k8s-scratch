@@ -10,6 +10,37 @@ import (
 // docker         | run <image_name> | <cmd> <args> (equals with:)
 // go run main.go | run              | <cmd> <args>
 
+type Docker struct {
+	name string
+	proc []string
+}
+
+/* In `C`:
+class Wheel {
+public:
+	std::string material;
+	float radius;
+};
+
+class Car {
+public:
+	typedef std::vector<Wheel> WheelCollection; // same as `type DockerImage = Docker` in Golang.
+	WheelCollection wheels;
+}
+*/
+type DockerImage = Docker // equivalent to `typedef` in C.
+
+type (
+	Mount struct{}
+)
+
+// Golang does not provide `class` data type like any other Object-Oriented Language (ie: Java, C++, ...).
+// Instead of that, we define associated functions or methods' expressions. Simply, a method is a function with a receiver.
+// See: https://go.dev/ref/spec#Method_declarations
+func (d *Docker) Name() string {
+	return d.name
+}
+
 func main() {
 	switch os.Args[1] {
 	case "run":

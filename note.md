@@ -53,6 +53,29 @@
   - Working with namespace:
     - Create a new namespace: `unshare` ~ also run a process inside the new container/box had just been created.
     - Enter a namespace: `nsenter` ~ adding new processes to an existing namespace.
+  - `namespace` in C/C++: compared with `class`, a term that relatively expanded from `struct` concept.
+    A `class` is a customized data type. It can contain data members (properties) and also functions as well.
+    Whereas `namespace` a simply an abstract way of grouping items (such as: other namespaces, classes, etc).
 
 - `Chroot`: Changing Root
 - `CGroups`: Control Groups
+
+2. Container in action with Vagrant: toolkit to generate a totally new virtual image (inside VirtualBox) by following instructions inside the Vagrantfile (written in `Ruby`).
+
+- Command:
+
+```pwsh
+[Preparation]
+vagrant autocomplete install --bash --zsh
+vagrant port <vm_name/vm_id>
+
+[First time started]
+cd <path_contains_Vagrantfile>
+vagrant up
+vagrant ssh
+
+[From the second time]
+vboxheadless --startvm <vm_name> --vrdp=off
+vagrant global-status [--prune]
+vagrant ssh <ID_from_prev_cmd>
+```

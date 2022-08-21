@@ -30,8 +30,18 @@ public:
 */
 type DockerImage = Docker // equivalent to `typedef` in C.
 
+/* In `C`:
+struct Mount {
+	std::string mount_point;
+	FILE *file_system;
+} mount;
+*/
 type (
-	Mount struct{}
+	Mount struct {
+		mount_point string
+		file_system os.File
+	}
+	mount Mount
 )
 
 // Golang does not provide `class` data type like any other Object-Oriented Language (ie: Java, C++, ...).

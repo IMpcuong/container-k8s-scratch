@@ -51,11 +51,55 @@
 
   - It's `a mechanism` to `provide processes` with different boundary/view on different system resources.
   - Working with namespace:
-    - Create a new namespace: `unshare` ~ also run a process inside the new container/box had just been created.
-    - Enter a namespace: `nsenter` ~ adding new processes to an existing namespace.
-  - `namespace` in C/C++: compared with `class`, a term that relatively expanded from `struct` concept.
-    A `class` is a customized data type. It can contain data members (properties) and also functions as well.
-    Whereas `namespace` a simply an abstract way of grouping items (such as: other namespaces, classes, etc).
+
+    > - Create a new namespace: `unshare` ~ also run a process inside the new container/box had just been created.
+    > - Enter a namespace: `nsenter` ~ adding new processes to an existing namespace.
+
+  - `namespace` in C++:
+
+    > - Compared with `class`, a term that relatively expanded from the `struct` concept.
+    > - A `class` is a customized data type. It can contain data members (properties) and also functions as well.
+    > - Whereas `namespace` a simply an abstract way of grouping items (such as: other namespaces, classes, etc).
+    > - A `namespace` cannot be created as an object, think of it more like a naming convention.
+    >   In essence, `namespace` defines the visibility scope for every item it contains.
+
+    ```C
+    #include <iostream>
+    #include <string.h>
+
+    using namespace std;
+
+    namespace foo {
+      namespace bar {
+        int _num_test() {
+          return strlen("bar");
+        }
+
+        namespace baz {
+          int test = 100;
+
+          int _num_test() {
+            return test;
+          }
+        }
+      }
+    }
+
+    namespace fbz = foo::bar::baz;
+    namespace fb = foo::bar;
+
+    using namespace fbz;
+    using namespace fb;
+
+    int main() {
+      cout << fbz::test << '\n' << endl;
+      // cout << _num_test() << endl; -> error: call of overloaded ‘_num_test()’ is ambiguous
+      cout << fbz::_num_test() << endl;
+      cout << fb::_num_test() << endl;
+
+      return 0;
+    }
+    ```
 
 - `Chroot`: Changing Root
 - `CGroups`: Control Groups

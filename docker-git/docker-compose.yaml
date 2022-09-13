@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+  docker-git-test:
+    build:
+      context: ../.
+      dockerfile: .
+    platform: linux/amd64
+    restart: unless-stopped

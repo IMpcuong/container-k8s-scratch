@@ -1,1 +1,5 @@
 ERR: "rpc error: code = Unknown desc = failed to fetch oauth token" -> fix: `docker login` -> not done!
+
+CMD:
+- `docker image push impcuong/docker-git-test:latest`
+- `docker rmi -f impcuong/docker-git-test`

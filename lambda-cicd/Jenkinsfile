@@ -1,0 +1,208 @@
+// NOTE:
+// List of all variables are available to shell and batch build steps: https://jenkins.io/env-vars.html/
+
+// Built-in or plugged in extension.
+currentBuild.displayName = "Jenkins-Lambda-Test #" + currentBuild.number
+
+// NOTE: `env-vars` only available inside `pipeline` scope:
+// Fail: currentBuild.displayName = "Jenkins-Lambda-Test #" + ${env.BUILD_NUMBER}
+
+def getEnvFromBranch(branch) {
+  def env = ""
+  if (branch == 'main') {
+    env = "dev"
+    return env
+  }
+
+  return env
+}
+
+def getObjProps(obj) {
+  println obj.properties
+    .sort{it.key}
+    .collect{it}
+    .findAll{!['class', 'active'].contains(it.key)}
+    .join('\n')
+}
+
+def workWithOutput(branch) {
+  def output = sh(returnStdout: true, script: "git ls-files --stage --abbrev=8")
+  return output.replace("tom", "jerry")
+}
+
+@NonCPS
+def getPatchesMsg() {
+  MAX_MSG_LEN = 100
+  def patchesMsg = ""
+
+  echo "Gathering SCM changes..."
+  def changeLogSets = currentBuild.changeSets
+  for (int i in 0..<changeLogSets.size()) {
+    def entries = changeLogSets[i].items
+    println entries
+    for (int j in 0..<entries.length) {
+      def entry = entries[j]
+      // Err: `Scripts not permitted to use staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods getProperties java.lang.Object`
+      // println entry.properties
+      truncatedMsg = entry.msg.take(MAX_MSG_LEN)
+      // NOTE: `${}` is the string intepolation in Groovy (invoke variable's value inside only double quotes string).
+      patchesMsg += "- ${truncatedMsg} [${entry.author}]\n"
+    }
+  }
+
+  if (!patchesMsg) {
+    patchesMsg = "- No new changes"
+  }
+  return patchesMsg
+}
+
+// NOTE: this is a declarative pipeline.
+pipeline {
+  agent {
+    label 'slave-01'
+  }
+  environment {
+    AWS_REGION = "ap-southeast-1"
+    ENV_NAME = getEnvFromBranch("${GIT_BRANCH.split("/")[1]}")
+    CHANGE_SET = getPatchesMsg()
+    DOCKER_BUILDKIT = 1
+    HTTP_PROXY = "http://10.11.12.13:14"
+    HTTPS_PROXY = "http://10.11.12.13:14"
+    ACCESS_KEY = "test"
+    SECRET_KEY = "test"
+    // IMAGE_NAME = "amazon/aws-sam-cli-build-image-python3.8" -> to heavy, weight around 800MB.
+    IMAGE_NAME = "pahud/aws-sam-cli"
+    REGISTRY = "https://hub.docker.com/"
+    TEST = workWithOutput("${GIT_BRANCH.split("/")[1]}")
+  }
+  stages {
+    stage("Test custom function") {
+      steps {
+        echo "Current changeset: ${CHANGE_SET}"
+        echo "Test print diff:\n ${TEST}"
+      }
+    }
+
+    stage("Retrieve user's privileges") {
+      steps {
+        echo "Env: ${ENV_NAME}"
+        echo "The current build number is ${env.BUILD_NUMBER}"
+        echo "Another method is to use \${BUILD_NUMBER}, which is ${BUILD_NUMBER}"
+        sh '''
+        declare usr=$(whoami)
+        cat /etc/*release
+        cat /etc/passwd | grep $usr
+        cat /etc/group | grep 1003
+        groups $usr
+        getent passwd | grep $usr
+        '''
+
+        // NOTE: cannot install using OS package management -> use `curl` instead.
+        // `yum search all sam 2>/dev/null`
+        sh'''
+        yum search all aws 2>/dev/null
+
+        sudo -l
+        if (( $? != 0 )); then
+          sudo sh
+          yum install -y aws
+          yum install -y sam
+          return 0
+        fi
+        user=$(whoami)
+        echo "${user} ALL = (ALL) NOPASSWD: ALL >>/etc/sudoers 2>&1"
+        pwd && ls -halt
+        '''
+      }
+    }
+
+    // NOTE:
+    // + `-v`: check volume part.
+    // + Run docker-unix-socket with the higher privileges.
+    /*
+      ```
+      sudo docker run -it --rm \
+        --privileged
+	      -v /var/run/docker.sock:/var/run/docker.sock \
+	      -v "$(PWD)":/var/opt \
+	      -p "3000:3000" \
+	      cnadiminti/aws-sam-local:latest
+      ```
+    */
+    // + To establish docker-socket connection with the corresponded registry, run this commands:
+    /*
+      ```
+      sudo groupadd docker
+      sudo usermod -aG docker $USER
+      groups || newgrp docker
+      sudo chown root:docker /var/run/docker.sock
+      sudo chown "$USER":"$USER" /home/"$USER"/.docker -R && sudo chmod g+rwx "$HOME/.docker" -R
+      sudo chmod 666 /var/run/docker.sock
+      ```
+    */
+    // + To pull image using local registry, please modify proxy configguration in this file:
+    // `vi /etc/sysconfig/docker`
+    stage("Pull SAM-CLI Docker image") {
+      steps {
+        withEnv(['aws_access_key_id="test"',
+                 'aws_secret_access_key="test"',
+                 'no_proxy="aws-serverless-tools-telemetry.us-west-2.amazonaws.com"',
+                 'SAM_CLI_TELEMETRY=0']) {
+          script {
+            sh '''
+            usr=$(whoami)
+            groups $usr
+            sudo sh && stat /var/run/docker.sock
+            echo "Pub: ${aws_access_key_id} / Priv: ${aws_secret_access_key}"
+            export no_proxy=${no_proxy}
+            '''
+
+            // docker run -id \
+            //   --env "HOME=/home/samcli" \
+            //   "${IMAGE_NAME}:latest" \
+            //   sam --version
+            def samImg = docker.image("${IMAGE_NAME}")
+            sh "docker pull ${samImg.imageName()}"
+            sh '''
+            docker --version
+            declare -i container=$(docker ps -a | wc -l)
+            if (( "${container}" > 1 )); then docker rm $(docker ps -a -q); fi
+            docker images -a --format "table {{.ID}}\t{{.Repository}}\t{{.Tag}}" | \
+              awk '{ print $1, $2 }' | \
+              grep sam
+            if (( $? != 0 )); then docker pull ${IMAGE_NAME}; fi
+            docker run -i \
+              --env Tty='true' \
+              "${IMAGE_NAME}:latest" \
+              sam --version
+            docker ps -a --format "table {{.ID}}\t{{.Image}}" | \
+              grep sam | \
+              awk '{ print $1 }' | \
+              xargs docker inspect --format "{{json .Config.Env}}\n{{json .Config.WorkingDir}}\n{{json .Config.Tty}}"
+            docker build -t samcli .
+            docker run -i --rm samcli
+            '''
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    // Always runs. And it runs before any of the other post conditions.
+    always {
+      // Let's wipe out the workspace before we finish!
+      deleteDir()
+    }
+  }
+  // The options directive is for configuration that applies to the whole job.
+  options {
+    // For example, we'd like to make sure we only keep 10 builds at a time, so
+    // we don't fill up our storage!
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+
+    // And we'd really like to be sure that this build doesn't hang forever, so
+    // let's time it out after half an hour.
+    timeout(time: 30, unit: 'MINUTES')
+  }
+}

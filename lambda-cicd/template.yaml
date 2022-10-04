@@ -1,0 +1,94 @@
+# NOTE: Template designer https://ap-southeast-1.console.aws.amazon.com/cloudformation/designer/home?region=ap-southeast-1#
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/sdk-general-information-section.html
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html#cfn-lambda-function-handler
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-sample-templates.html
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/quickref-lambda.html
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A Test Cloudformation template to automate Lambda serverless CI-CD.
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    MemorySize: 512
+    Timeout: 30
+    Environment:
+      Variables:
+        DB_PROPERTIES: "characterEncoding=utf-8,connectionTimeZone=LOCAL,forceConnectionTimeZoneToSession=true"
+
+Parameters:
+  Environment:
+    Type: String
+  Language:
+    Type: String
+
+Resources:
+  TestFunction:
+    # Type: AWS::Serverless::Function
+    # Properties:
+    # AutoPublishAlias: test
+    # FunctionName: !Sub "${Language}${Environment}-Function"
+    # FunctionName: GoUAT-Function
+    # Runtime: provided.al2 # ~ ['Custom Runtime', 'Amazon Linux 2', 'x86_64, arm64']
+    # Tracing: Active
+    # Architectures:
+    #   - "x86_64"
+    # DeploymentPreference:
+    #   Type: AllAtOnce
+    # Description: "For testing CICD for lambda function"
+    # The name of the method within your code that Lambda calls to execute your function.
+    # Handler is required if the deployment package is a .zip file archive.
+    # The format includes the file name. It can also include namespaces and other qualifiers, depending on the runtime.
+    # Handler: ./dist/handler/go-lambda
+    # Full URI to source code of the function in local environment:
+    # CodeUri: ./go-lambda.zip
+    # CodeUri: .
+    # Role: !GetAtt LambdaExecutionRole.Arn
+    # Metadata:
+    #   BuildMethod: makefile
+
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      FunctionName: GoUAT-Function
+      Description: "For testing CICD for lambda function"
+      AutoPublishAlias: test
+      CodeUri: handler/
+      Handler: handler
+      Runtime: go1.x
+      Architectures:
+        - x86_64
+      Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+      # Events:
+      #   CatchAll:
+      #     Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+      #     Properties:
+      #       Path: /hello
+      #       Method: GET
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          PARAM1: VALUE
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: arn:aws:logs:*:*:*

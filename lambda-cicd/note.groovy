@@ -34,3 +34,36 @@ getObjProps(coordinates)
 // longitude=3.67
 
 getObjProps(newObj)
+
+// Run commands with piping operand: (resource ~ https://gist.github.com/lyuboraykov/8deae849e4812669793a)
+def cmd = '''
+docker ps -a | tail -n+2 | head -n4 | awk '{print $1}' | xargs docker container rm -f
+'''
+// def proc = ['bash', '-c', cmd].execute()
+// println proc.text
+
+def cmd1 = '''
+docker rmi -f `docker images -a | grep -i pipenv | awk '{print $3}'`
+'''
+// def proc1 = ['bash', '-c', cmd1].execute()
+// println proc1.text
+
+def cmd2 = '''
+docker images -a | grep -i qualys
+docker run -d --restart=always qualys/sensor:1.19.0
+'''
+// def proc2 = ['bash', '-c', cmd2].execute()
+// println proc2.text
+
+def runPipeCmd(cmd) {
+  def proc = ['bash', '-c', cmd].execute()
+  return proc.text
+}
+
+println 'docker images -a'.execute().text
+println 'docker ps -a'.execute().text
+
+def rmCmd = '''
+docker images -a | tail -n+2 | awk '{if($1 ~ /^.*none/ || $1 ~ /^.*null/) print $3}' | xargs docker rmi -f
+'''
+runPipeCmd(rmCmd)

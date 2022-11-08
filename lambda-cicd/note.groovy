@@ -63,6 +63,9 @@ def runPipeCmd(cmd) {
 println 'docker images -a'.execute().text
 println 'docker ps -a'.execute().text
 
+// NOTE: single quotes string, include `'` or `'''` don't support interpolation
+// or it's just allow plain-text, in the reversed side, `"` or `"""` totally support
+// interpolation expression.
 def rmCmd = '''
 docker images -a | tail -n+2 | awk '{if($1 ~ /^.*none/ || $1 ~ /^.*null/) print $3}' | xargs docker rmi -f
 '''

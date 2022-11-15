@@ -70,3 +70,34 @@ def rmCmd = '''
 docker images -a | tail -n+2 | awk '{if($1 ~ /^.*none/ || $1 ~ /^.*null/) print $3}' | xargs docker rmi -f
 '''
 runPipeCmd(rmCmd)
+
+// NOTE: Strings concatenation with multiple ways in Groovy.
+// Link: https://dzone.com/articles/concatenate-strings-in-groovy
+
+// Exp1: Using `+` operator.
+def first = "G.O.A.T"
+def last = "Eminem"
+def expected = 'My name is G.O.A.T Eminem'
+assertToString('My name is' + first + last, expected)
+
+// Exp2: Using GString, only doable inside the double quotes punctuation.
+println "My name is $first $last"
+
+// Exp3: Using GString closure expression.
+println "My name is ${-> first} ${-> last}" // This type of closure expression is called upon/adapted with each coercion of the string's change/patch.
+
+// Exp4: Using String.concat() method.
+'My name is '.concat(first).concat(' ').concat(last)
+
+// Exp5: Using left shift operator.
+'My name is ' << first << ' ' << last
+
+// Exp6: Using array join method.
+['My name is', first, last].join(' ')
+
+// Exp7: Using Array.inject() method.
+[first,' ', last]
+  .inject(new StringBuffer('My name is '), { initial, name -> initial.append(name); return initial }).toString()
+
+// Exp8: Using StringBuilder/StringBuffer.append() method.
+new StringBuilder().append('My name is ').append(first).append(' ').append(last)

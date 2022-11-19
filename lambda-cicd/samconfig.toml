@@ -1,0 +1,17 @@
+version = 0.1
+
+[test]
+[test.deploy]
+[test.deploy.parameters]
+stack_name = "Lambda-Stack"
+s3_bucket = "bucket-name"
+s3_prefix = "Lambda-Stack"
+region = "ap-southeast-1"
+profile = "default"
+confirm_changeset = true
+fail_on_empty_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = """ \
+  Language=\"Go\" \
+  Environment=\"UAT\" \
+"""

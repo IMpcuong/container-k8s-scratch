@@ -1,0 +1,151 @@
+currentBuild.displayName = "PipelineProcess #" + currentBuild.number
+
+def getEnvFromBranch(branch) {
+  if (branch == "master") {
+    return "prod"
+  }
+
+  return branch
+}
+
+def getRepoName() {
+  // Only retrieves the local repository's name:
+  // `def repoName = sh(script: 'basename $(git rev-parse --show-toplevel)', returnStdout: true).trim()`
+  def repoName = sh(script: 'basename -s .git $(git config --get remote.origin.url)', returnStdout: true).trim()
+  if (null == repoName) {
+    repoName = "service-name"
+    return repoName
+  }
+  print "Remote repo's name: ${repoName}"
+
+  return repoName
+}
+
+def getCurDate() {
+  def curDate = sh(script: 'date +%Y-%m-%d', returnStdout: true).trim()
+  print "Current datetime-formatter: ${curDate}"
+  return curDate
+}
+
+def getVersion() {
+  def versionNumber
+
+  def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+  if (null == commitHash) {
+    versionNumber = env.BUILD_NUMBER;
+  } else {
+    // Old: `versionNumber = commitHash.take(8)`.
+    // With the flag `--short` (7 chars), no need to cut first 8 characters of the hash string.
+    versionNumber = commitHash;
+  }
+  print "Build versions: ${versionNumber}"
+
+  return versionNumber
+}
+
+pipeline {
+  agent {
+    label 'slave-01'
+  }
+  environment {
+    REPO = getRepoName()
+    ENV = getEnvFromBranch("${GIT_BRANCH.split("/")[1]}")
+    HASH_VERSION = getVersion().trim()
+    CUR_DATE = getCurDate()
+    SSH_PORT = 22222
+    SCP_OPTS = "-o StrictHostKeyChecking=no -P $SSH_PORT"
+    SSH_OPTS = "-o StrictHostKeyChecking=no -p $SSH_PORT"
+    GLOBAL_MAVEN_SETTINGS_CONFIG = '<hash_value>'
+    MAVEN_SETTINGS_CONFIG = '<hash_value>'
+    NO_PROXY = ""
+    // (?) := `-s ~/.m2/settings.xml`.
+    // (?) := `--batch-mode --errors --fail-at-end`.
+    MAVEN_CLI_OPTS = "-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true -Dmaven.test.skip=true -DskipTests=true -Dmaven.javadoc.skip=true"
+    JDK_VERSION = "JDK_SE_11"
+    MVN_VERSION = "Maven_3.8.5"
+  }
+  tools {
+    maven 'Maven_3.8.5'
+  }
+  stages {
+    stage("Process Builder") {
+      steps {
+        script {
+          withMaven(globalMavenSettingsConfig: "$GLOBAL_MAVEN_SETTINGS_CONFIG", jdk: "$JDK_VERSION", maven: "$MVN_VERSION",
+            mavenOpts: "$MAVEN_CLI_OPTS", mavenSettingsConfig: "$MAVEN_SETTINGS_CONFIG") {
+            sh """
+            ls -lart; printenv | grep -i java
+            hostname -I
+
+            # NOTE: Must check the in-between `<name>...</name>`'s string convention inside our `pom.xml`
+            # file to be matched with our private remote-repo's name.
+            # `mvn $MAVEN_CLI_OPTS test package` --> NOTE: Maybe this was an incident of duplicating mvn-opts.
+            mvn $MAVEN_CLI_OPTS test package
+            mv ./target/$REPO-1.0.jar ./target/\"$REPO-$HASH_VERSION\".jar
+            ls -lrt ./target
+            """
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
+      }
+    }
+
+    stage("Deployment Process") {
+      steps {
+        script {
+          withCredentials([
+            string(credentialsId: "bnpl-$ENV-engine-host", variable: 'SSH_HOST'),
+            string(credentialsId: "bnpl-$ENV-proxy", variable: 'PROXY_SERVER'),
+            usernamePassword(credentialsId: "bnpl-$ENV-engine-cred", passwordVariable: 'SSH_PASSWORD', usernameVariable: 'SSH_USER')
+          ]) {
+            // `remote` := is a common step variable (of this plugin), which is a `Map` of remote node's settings.
+            def remote = [:]
+            remote.name = "bnpl-$REPO-$ENV"
+            remote.host = "$SSH_HOST"
+            remote.port = 22222
+            remote.user = "$SSH_USER"
+            remote.password = "$SSH_PASSWORD"
+            remote.allowAnyHosts = true
+
+            echo "Starting backup .jar files..."
+            sshCommand remote: remote, command: "ls -lrt ~/app/; mkdir -p ~/backup"
+            sshCommand remote: remote, command: "mkdir -p ~/backup/$REPO-$CUR_DATE"
+            sshCommand remote: remote, command: "cp -r ~/app/$REPO*.jar ~/backup/$REPO-$CUR_DATE"
+            sshCommand remote: remote, command: "rm -rf ~/app/$REPO*.jar"
+            echo "Done backup!"
+
+            // FIXME: `No such field found: field java.lang.String jar` --> string concatenation was incorrect: `./target/$REPO-$HASH_VERSION.jar`.
+            echo "Starting new $REPO deployment..."
+            sh "find . -type f ! -empty -iname \"*.jar\""
+            // NOTE: `configname` ~ `sshServerConfig` must be defined in this absolue path "Manage Jenkins/Configure System/SSH remote hosts" in the `sshPublisher` extension.
+            // NOTE: Strings concatenation types in Groovy (https://dzone.com/articles/concatenate-strings-in-groovy).
+            sshPut remote: remote, from: "target/$REPO-$HASH_VERSION".concat('.jar'), into: "app/"
+            echo "Done backup files!"
+
+            echo "Restart $REPO service..."
+            def shortenSvc = "service-name"
+            def scriptSvc = "$shortenSvc".concat('.sh')
+            def oldJar = "$shortenSvc.*".concat('.jar')
+            def newJar = "$REPO-$HASH_VERSION".concat('.jar')
+            sshCommand remote: remote, command: "sed -ie \"s/$oldJar/$newJar/g\" ~/bin/$scriptSvc"
+            sshCommand remote: remote, command: "sh ~/bin/$scriptSvc; sleep 10"
+            echo "Done restart service!"
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      deleteDir()
+    }
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+}

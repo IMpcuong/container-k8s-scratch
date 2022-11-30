@@ -79,6 +79,7 @@ kubectl options
   kubectl get all -o wide
   kubectl get pods -n default
   kubectl get ns # kubectl get namespaces
+  kubectl get all -n kube-system
 
   # Error: Metrics API not available.
   # --> Needs to install the required metrics to execute this command.

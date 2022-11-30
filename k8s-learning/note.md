@@ -6,6 +6,8 @@
 - The `one-container-per-Pod` model is the most common Kubernetes use case.
   In this case, you can think of a `Pod` as a wrapper around a single container, and Kubernetes manages the Pods rather than the containers directly.
 
+- `minikube` cluster installation: `minikube start --driver=docker --cpus=2 --memory=2000m --disk-size="10000mb"`.
+
 1. `kubectl` command's examples:
 
 - Comamnd's instructions:
@@ -73,9 +75,16 @@ kubectl options
 
 - `kubectl exec` login to specific pod (the wrapper of container):
 
-- `kubectl get` services/system's current status:
+  ```bash
+  kubectl exec -it centos-pod -- /bin/bash
+  ```
+
+- `kubectl get` or `kubectl describe` services/system's current status:
 
   ```bash
+  kubectl describe nodes minikube
+  kubectl describe node kube-system
+
   kubectl get all -o wide
   kubectl get pods -n default
   kubectl get ns # kubectl get namespaces

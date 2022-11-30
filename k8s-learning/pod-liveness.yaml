@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: coffee-app-liveness
+spec:
+  containers:
+    - image: ansilh/demo-coffee
+      name: coffee-liveness
+      readinessProbe:
+        initialDelaySeconds: 10
+        httpGet:
+          port: 8080
+      livenessProbe:
+        periodSeconds: 5
+        httpGet:
+          port: 8080

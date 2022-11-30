@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: coffee-app-readiness
+spec:
+  containers:
+    - image: ansilh/demo-coffee
+      name: coffee-readiness
+      readinessProbe: # probe = investigate
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        # Error: When both tags `httpGet` and `exec` were defined at the same time.
+        # The Pod "coffe-app-readiness" is invalid: spec.containers[0].readinessProbe.httpGet:
+        # Forbidden: may not specify more than 1 handler type
+        # httpGet:
+        #   port: 8080
+        exec:
+          command:
+            - /bin/bash
+            - ls

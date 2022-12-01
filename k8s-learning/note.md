@@ -85,14 +85,24 @@ kubectl options
   kubectl exec -it centos-pod -- /bin/bash
   ```
 
-- `kubectl label` used to labelize each pod to make them becoming an unique identifier:
+- `kubectl label` or `kubectl annotate` used to labelize each pod to make them becoming an unique identifier:
 
   ```bash
   # Add custom label to pod.
   kubectl label pod coffee-container app=frontend
 
-  # Remove labels from pod.
+  # Remove label from pod.
   kubectl label pod coffee-container app-
+
+  # Bind custom annotation into pod.
+  # The metadata in an annotation can be small or large, structured or unstructured, and can be included characters which is not permitted by labels.
+  kubectl annotate pod coffee-app url=https://hub.docker.com/r/IMpcuong/test-image
+
+  # Decouple the existed annotation from pod.
+  kubectl annotate pod coffee-app url-
+
+  # New applied labels or annotations checker.
+  kubectl describe pod coffee-app
   ```
 
 - `kubectl get` or `kubectl describe` services/system's current status:

@@ -17,7 +17,13 @@ kubectl <command> --help
 kubectl options
 ```
 
-- `kubect apply` or `kubectl create --save-config` examples:
+- `kubectl run` used to build image as a pod in an imperative way (not using declaraitve file):
+
+  ```bash
+  kubectl run coffee-container --image=ansilh/demo-coffee --restart=Never
+  ```
+
+- `kubectl apply` or `kubectl create --save-config` examples:
 
   - Usage: `kubectl apply (-f FILENAME | -k DIRECTORY) [options]`
 
@@ -79,6 +85,16 @@ kubectl options
   kubectl exec -it centos-pod -- /bin/bash
   ```
 
+- `kubectl label` used to labelize each pod to make them becoming an unique identifier:
+
+  ```bash
+  # Add custom label to pod.
+  kubectl label pod coffee-container app=frontend
+
+  # Remove labels from pod.
+  kubectl label pod coffee-container app-
+  ```
+
 - `kubectl get` or `kubectl describe` services/system's current status:
 
   ```bash
@@ -86,9 +102,13 @@ kubectl options
   kubectl describe node kube-system
 
   kubectl get all -o wide
+  kubetcl get pods -o wide --show-labels
   kubectl get pods -n default
   kubectl get ns # kubectl get namespaces
   kubectl get all -n kube-system
+
+  # Selecting a pod using its own unique label.
+  kubectl get pods --selector=app=frontend
 
   # Error: Metrics API not available.
   # --> Needs to install the required metrics to execute this command.

@@ -118,6 +118,14 @@ kubectl options
   kubectl taint node minikube node-role.kubernetes.io/control-plane="":NoExecute
   ```
 
+- `kubectl explain` the `man-page` for Kubernetes' specifications and components:
+
+  ```bash
+  kubectl explain Pod
+  kubectl explain Pod.spec
+  kubectl explain Pod.spec.containers
+  ```
+
 - `kubectl get` or `kubectl describe` services/system's current status:
 
   ```bash

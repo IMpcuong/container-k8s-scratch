@@ -105,6 +105,19 @@ kubectl options
   kubectl describe pod coffee-app
   ```
 
+- `kubectl taint` disables the given node from consuming pods and only accepts pods that contain the corresponding taint.
+
+  ```bash
+  # Format pattern: `key=value:Effect`.
+  #
+  # `Effect := [NoSchedule, PreferNoSchedule, NoExecute]`.
+  # + NoSchedule ~ Pods are not going to be scheduled.
+  # + PreferNoSchedule ~ This is a “preference” or “soft” version of NoSchedule; the system will try to avoid placing a pod that does not tolerate the taint on the node, but it is not required.
+  # + NoExecute ~ pod will be evicted from the node (if it is already running on the node), and will not be scheduled onto the node (if it is not yet running on the node).
+  kubectl taint node minikube node-role.kubernetes.io/control-plane="":NoSchedule
+  kubectl taint node minikube node-role.kubernetes.io/control-plane="":NoExecute
+  ```
+
 - `kubectl get` or `kubectl describe` services/system's current status:
 
   ```bash

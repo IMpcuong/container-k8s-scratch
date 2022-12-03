@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: coffee-pod-tainted
+spec:
+  containers:
+    - image: ansilh/demo-coffee
+      name: coffee-tainted
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      # NOTE: Effect must be matched with the taint status we were given in the `kubectl taint` command.
+      # Command: `kubectl taint node minikube node-role.kubernetes.io/control-plane="":NoExecute`.
+      # --> Our `minikube` node will only accept pods that have the same tolerance effect as the tainted status of it.
+      effect: NoSchedule # This pod won't be able to create and will be shutdown/evicted if it was running.

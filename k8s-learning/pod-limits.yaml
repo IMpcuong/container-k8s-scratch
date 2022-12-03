@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  # NOTE:
+  # + `{}`: represents for map type in YAML markup language.
+  # + `[]`: represents for array type in YAML markup language.
+  labels: {}
+  name: coffee-pod-limits
+spec:
+  containers:
+    - image: ansilh/demo-coffee
+      name: coffee-limits
+      resources:
+        requests:
+          CPU: 100M
+          Memory: 50Mi
+        limits:
+          CPU: 200M
+          Memory: 200Mi
+      # Errors:
+      # * spec.containers[0].resources.limits[CPU]: Invalid value: "CPU": must be a standard resource type or fully qualified
+      # * spec.containers[0].resources.limits[CPU]: Invalid value: "CPU": must be a standard resource for containers
+      # * spec.containers[0].resources.limits[Memory]: Invalid value: "Memory": must be a standard resource type or fully qualified
+      # * spec.containers[0].resources.limits[Memory]: Invalid value: "Memory": must be a standard resource for containers
+      # * spec.containers[0].resources.requests[CPU]: Invalid value: "CPU": must be a standard resource type or fully qualified
+      # * spec.containers[0].resources.requests[CPU]: Invalid value: "CPU": must be a standard resource for containers
+      # * spec.containers[0].resources.requests[Memory]: Invalid value: "Memory": must be a standard resource type or fully qualified
+      # * spec.containers[0].resources.requests[Memory]: Invalid value: "Memory": must be a standard resource for containers

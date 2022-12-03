@@ -1,0 +1,57 @@
+currentBuild.displayName = "IaC-Scanner #" + currentBuild.number
+
+// NOTE:
+// + Pipelines allow you to specify a unique agent for each stage that you want to execute.
+// + The problem must have been faced when using different agents is that the previous workspace's content cannot be inherited by the next one.
+
+pipeline {
+  agent any
+  environment {
+    HTTP_PROXY = 'http://10.10.10.10:1111'
+    HTTPS_PROXY = 'http://10.10.10.10:1111'
+    NO_PROXY = "*.edu.com"
+    PRISMA_API_URL='https://api.prismacloud.io'
+  }
+  stages {
+    // NOTE: Both methods below can be used to checkout to a SCM resource.
+    // steps {
+    //   checkout([
+    //     $class: 'GitSCM',
+    //     branches: [[name: 'main']],
+    //     userRemoteConfigs: [[url: 'https://gihub.com/dude/scan.git']]
+    //   ])
+    // }
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'https://gihub.com/dude/scan.git'
+        stash includes: '**/*', name: 'source'
+      }
+    }
+    stage('Checkov') {
+      steps {
+        script {
+          docker.image('bridgecrew/checkov:latest').inside("--entrypoint=''") {
+            unstash 'source'
+            try {
+              sh '''
+              checkov -d . --use-enforcement-rules -o cli -o junitxml \
+                --output-file-path console,results.xml \
+                --bc-api-key some-api-key \
+                --repo-id dude/scan.git \
+                --branch main
+              '''
+              junit skipPublishingChecks: true, testResults: 'results.xml'
+            } catch(err) {
+              junit skipPublishingChecks: true, testResults: 'results.xml'
+              throw err
+            }
+          }
+        }
+      }
+    }
+  }
+  options {
+    preserveStashes()
+    timestamps()
+  }
+}

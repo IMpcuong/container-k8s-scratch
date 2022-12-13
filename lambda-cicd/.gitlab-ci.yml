@@ -14,7 +14,7 @@ stages:
 sam-validate:
   stage: test
   tags:
-    - bnpl
+    - tags
   before_script:
     - sam --version
   script:
@@ -37,7 +37,7 @@ sam-deploy:
     entrypoint: [""]
     pull_policy: if-not-present
   tags:
-    - bnpl
+    - tags
   cache:
     - key: maven_repo
       paths:
@@ -60,15 +60,15 @@ sync-codebase:
     name: $REGISTRY/bitnami/git:latest
     pull_policy: if-not-present
   tags:
-    - bnpl
+    - tags
   variables:
     GIT_PRIV_PROJECT: "${GIT_PRIV_DOMAIN}/${PRIV_REPO}"
     PRIV_REPO_URL: "https://${GIT_USER}:${GIT_PWD}@${GIT_PRIV_PROJECT}.git"
   before_script:
     - unset http_proxy && unset https_proxy
-    - git config --global user.email "${GIT_USER}@protomail.com"
+    - git config --global user.email "${GIT_USER}@gmail.com"
     - git config --global user.name "Runner-Sync"
-    - git config --global http.sslverify false
+    - git config --global http.sslVerify false
     - mkdir -p $HOME/$PRIV_REPO/
     - echo $PRIV_REPO_URL && echo $CI_PROJECT_DIR
   script:

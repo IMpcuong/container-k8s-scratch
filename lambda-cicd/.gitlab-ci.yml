@@ -1,23 +1,87 @@
-build-job:
-  stage: build
-  script:
-    - echo "Hello, ${GITLAB_USER_LOGIN}!"
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
 
-test-job1:
+image:
+  name: $REGISTRY/amazon/aws-sam-cli-build-image-python3.8:latest
+  pull_policy: if-not-present
+
+stages:
+  - test
+  - deploy
+  - migrate
+
+sam-validate:
   stage: test
+  tags:
+    - bnpl
+  before_script:
+    - sam --version
   script:
-    - echo "This job tests something"
+    - echo "Cannot validate the cloudformation due to the lack of connection (cloud->premise := reverse proxy!)"
+  environment:
+    name: $CI_COMMIT_BRANCH
 
-test-job2:
-  stage: test
-  script:
-    - echo "This job tests something, but takes more time than test-job1."
-    - echo "After the echo commands complete, it runs the sleep command for 20 seconds"
-    - echo "which simulates a test that runs 20 seconds longer than test-job1"
-    - sleep 20
+.granted-perms: &granted-perms
+  - stat -c "%a" ./scripts/setup-lambda-permission.sh
 
-deploy-prod:
+.granted-auth:
   stage: deploy
+  before_script:
+    - stat -c "%a" ./scripts/setup-authorizer-permission.sh
+
+sam-deploy:
+  stage: deploy
+  image:
+    name: $REGISTRY/bitnami/aws-cli:latest
+    entrypoint: [""]
+    pull_policy: if-not-present
+  tags:
+    - bnpl
+  cache:
+    - key: maven_repo
+      paths:
+        - .m2/repository
+    - key: sam
+      paths:
+        - .aws-sam
+  before_script:
+    - !reference [.granted-auth, before_script]
+    - uname -a
   script:
-    - echo "This job deploys something from the ${CI_COMMIT_BRANCH} branch."
-  environment: production
+    - *granted-perms
+    - aws --version
+  environment:
+    name: $CI_COMMIT_BRANCH
+
+sync-codebase:
+  stage: migrate
+  image:
+    name: $REGISTRY/bitnami/git:latest
+    pull_policy: if-not-present
+  tags:
+    - bnpl
+  variables:
+    GIT_PRIV_PROJECT: "${GIT_PRIV_DOMAIN}/${PRIV_REPO}"
+    PRIV_REPO_URL: "https://${GIT_USER}:${GIT_PWD}@${GIT_PRIV_PROJECT}.git"
+  before_script:
+    - unset http_proxy && unset https_proxy
+    - git config --global user.email "${GIT_USER}@protomail.com"
+    - git config --global user.name "Runner-Sync"
+    - git config --global http.sslverify false
+    - mkdir -p $HOME/$PRIV_REPO/
+    - echo $PRIV_REPO_URL && echo $CI_PROJECT_DIR
+  script:
+    - git clone -b dev ${PRIV_REPO_URL} $HOME/$PRIV_REPO/
+    - cp -rf $CI_PROJECT_DIR/* $HOME/$PRIV_REPO/
+    - cd $HOME/$PRIV_REPO/
+    - |
+      declare -x cur_stat=$(git status)
+      if [[ $cur_stat == *"nothing to commit"* ]]; then
+        git commit --amend --no-edit && git push -f origin $CI_COMMIT_BRANCH
+      else
+        git add -A . && git commit -m "$CI_COMMIT_MESSAGE ($CI_COMMIT_TIMESTAMP)"
+        git push origin $CI_COMMIT_BRANCH
+      fi
+  environment:
+    name: $CI_COMMIT_BRANCH

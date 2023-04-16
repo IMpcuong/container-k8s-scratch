@@ -7,6 +7,8 @@ import (
 	"runtime"
 )
 
+// NOTE: Needs to creare a k8s cluster on GKE from scratch.
+
 // docker         | run <image_name> | <cmd> <args> (equals with:)
 // go run main.go | run              | <cmd> <args>
 
